@@ -16,9 +16,13 @@ jobs:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
 
+      - name: Set DEFAULT_BRANCH to current branch
+        if: ${{ github.base_ref == '' }}
+        run: echo "DEFAULT_BRANCH=$(echo '${{ github.ref }}' | sed 's/refs\/heads\///')" >> $GITHUB_ENV
+
       - name: Lint Code Base
         uses: docker://github/super-linter:latest
         env:
           VALIDATE_ALL_CODEBASE: false
-          DEFAULT_BRANCH: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ env.DEFAULT_BRANCH }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
