@@ -10,19 +10,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout the code base
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
 
+      - name: Set DEFAULT_BRANCH to PR target
+        # if base_ref has a value, this is a PR
+        # we save the PR target branch name to a variable for use in linter config
+        # we pass string between job steps by echoing to $GITHUB_ENV, making it available in $env later
+        if: ${{ github.base_ref != '' }}
+        run: echo "DEFAULT_BRANCH=${{ github.base_ref }}" >> $GITHUB_ENV
+
       - name: Set DEFAULT_BRANCH to current branch
+        # if base_ref has no value, this is just a commit on a branch
+        # we need to strip refs/heads from github.ref to find the current branch name
+        # then save the current branch name to a variable for use in linter config later
+        # we pass strings between job steps by echoing to $GITHUB_ENV, making it available in $env later
         if: ${{ github.base_ref == '' }}
         run: echo "DEFAULT_BRANCH=$(echo '${{ github.ref }}' | sed 's/refs\/heads\///')" >> $GITHUB_ENV
 
+      - name: Echo out branch values
+        run: | 
+          echo "${{ env.DEFAULT_BRANCH }}"
+          echo github.base_ref: ${{ github.base_ref }}
+          echo github.head_ref: ${{ github.head_ref }}
+          echo github.ref: ${{ github.ref }}
+      # Example output: in a PR branch (head) named `feature-1 to a target branch (base) of `release-v1`, you'll see:
+        # github.base_ref: release-v1
+        # github.head_ref: feature-1
+        # github.ref: refs/pull/2/merge
+      # if github.base_ref is empty, then commit is against a branch with no PR
+        # this could have been a commit on any branch
+        # In that case, github.ref show the branch we are on: refs/heads/main
+        # DEFAULT_BRANCH: regex to match branch name (remove "refs/heads/" prefix)
+      # elseif github.base_ref is not empty, then commit is against a branch with a PR target
+        # github.base_ref will have the target branch name
+        # github.head_ref will have the branch name we are on
+        # github.ref will have the PR number: refs/pull/1/merge
+        # DEFAULT_BRANCH: ${{ github.base_ref }}
+
+      # Run Linter against code base
+      # https://github.com/marketplace/actions/super-linter
       - name: Lint Code Base
-        uses: docker://github/super-linter:latest
+        uses: github/super-linter@v4.2.2
         env:
-          VALIDATE_ALL_CODEBASE: false
-          DEFAULT_BRANCH: ${{ env.DEFAULT_BRANCH }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # the value needs to change when Git default branch changes
+          DEFAULT_BRANCH: ${{ env.DEFAULT_BRANCH }}
+          # setting this to false means that only changed files will be scanned in each commit
+          VALIDATE_ALL_CODEBASE: false
