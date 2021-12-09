@@ -17,6 +17,12 @@ jobs:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
 
+      - name: Test
+        shell: bash
+        run: |
+          MY_NAME="Mona The Octocat"
+          echo "::add-mask::$MY_NAME"
+
       - name: Set DEFAULT_BRANCH to PR target
         # if base_ref has a value, this is a PR
         # we save the PR target branch name to a variable for use in linter config
